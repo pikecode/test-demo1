@@ -8,7 +8,7 @@ import LogDetail from './components/LogDetail.vue'
 import type { LogItem } from './types/log'
 
 // 使用日志获取 Hook
-const { logs, isLoading, error, startPolling, stopPolling } = useLogFetcher()
+const { logs, isLoading, error, startPolling } = useLogFetcher()
 
 // 使用日志过滤 Hook
 const {

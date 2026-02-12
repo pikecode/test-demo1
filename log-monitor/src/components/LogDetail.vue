@@ -63,7 +63,7 @@
     <div
       v-if="log"
       @click="onClose"
-      class="fixed inset-0 bg-black bg-opacity-50 z-40"
+      class="fixed inset-0 bg-black/50 z-40"
     ></div>
   </transition>
 </template>
