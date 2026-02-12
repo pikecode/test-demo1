@@ -11,7 +11,7 @@ export function useLogFilter(logs: { value: LogItem[] }) {
   const selectedLevels = ref<LogLevel[]>(['INFO', 'WARN', 'ERROR', 'DEBUG'])
 
   // 防抖处理搜索关键词
-  const debouncedKeyword = useDebounce(searchKeyword.value, 500)
+  const debouncedKeyword = useDebounce(searchKeyword, 500)
 
   /**
    * 过滤后的日志列表
