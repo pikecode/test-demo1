@@ -2,11 +2,11 @@
   <div
     @click="onClick"
     :class="[
-      'p-4 border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors',
+      'h-[72px] px-4 py-3 border-b border-gray-200 hover:bg-gray-50 cursor-pointer transition-colors overflow-hidden',
       isSelected && 'bg-blue-50',
     ]"
   >
-    <div class="flex items-start gap-3">
+    <div class="flex items-start gap-3 h-full">
       <!-- 级别标签 -->
       <span
         :class="[
@@ -19,7 +19,7 @@
 
       <!-- 日志内容 -->
       <div class="flex-1 min-w-0">
-        <p class="text-sm text-gray-800 break-words">{{ log.message }}</p>
+        <p class="text-sm text-gray-800 truncate">{{ log.message }}</p>
         <p class="text-xs text-gray-500 mt-1">
           {{ formatTimestamp(log.timestamp) }}
         </p>

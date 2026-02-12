@@ -23,8 +23,17 @@
       class="h-full overflow-y-auto"
       @scroll="onScroll"
     >
-      <div :style="{ height: `${totalHeight}px`, position: 'relative' }">
-        <div :style="{ transform: `translateY(${offsetY}px)` }">
+      <!-- 撑开总高度的占位容器 -->
+      <div :style="{ height: totalHeight + 'px', position: 'relative' }">
+        <!-- 绝对定位的可见区域 -->
+        <div
+          :style="{
+            position: 'absolute',
+            top: offsetY + 'px',
+            left: 0,
+            right: 0,
+          }"
+        >
           <LogItem
             v-for="log in visibleLogs"
             :key="log.id"
@@ -39,7 +48,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import type { LogItem as LogItemType } from '../types/log'
 import LogItem from './LogItem.vue'
 
@@ -55,60 +64,89 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-// 虚拟滚动配置
-const ITEM_HEIGHT = 80 // 每条日志的高度
-const BUFFER_SIZE = 5 // 缓冲区大小
+// 虚拟滚动配置 — 必须与 LogItem 的 h-[72px] 一致
+const ITEM_HEIGHT = 72
+const BUFFER_COUNT = 10 // 上下各多渲染 10 条
 
 const scrollContainer = ref<HTMLElement | null>(null)
 const scrollTop = ref(0)
 const containerHeight = ref(600)
+let prevLogCount = 0
+let rafId: number | null = null
+let resizeObserver: ResizeObserver | null = null
 
-// 计算总高度
+// ---- 计算属性 ----
+
 const totalHeight = computed(() => props.logs.length * ITEM_HEIGHT)
 
-// 计算可见范围
-const visibleRange = computed(() => {
-  const start = Math.floor(scrollTop.value / ITEM_HEIGHT)
-  const end = Math.ceil((scrollTop.value + containerHeight.value) / ITEM_HEIGHT)
-  return {
-    start: Math.max(0, start - BUFFER_SIZE),
-    end: Math.min(props.logs.length, end + BUFFER_SIZE),
-  }
-})
+const startIndex = computed(() =>
+  Math.max(0, Math.floor(scrollTop.value / ITEM_HEIGHT) - BUFFER_COUNT)
+)
 
-// 可见的日志列表
-const visibleLogs = computed(() => {
-  const { start, end } = visibleRange.value
-  return props.logs.slice(start, end)
-})
+const endIndex = computed(() =>
+  Math.min(
+    props.logs.length,
+    Math.ceil((scrollTop.value + containerHeight.value) / ITEM_HEIGHT) + BUFFER_COUNT
+  )
+)
 
-// 偏移量
-const offsetY = computed(() => visibleRange.value.start * ITEM_HEIGHT)
+const visibleLogs = computed(() => props.logs.slice(startIndex.value, endIndex.value))
 
-// 滚动事件处理
-const onScroll = (event: Event) => {
-  const target = event.target as HTMLElement
-  scrollTop.value = target.scrollTop
+const offsetY = computed(() => startIndex.value * ITEM_HEIGHT)
+
+// ---- 事件处理 ----
+
+const onScroll = () => {
+  // 用 rAF 节流，每帧最多更新一次
+  if (rafId !== null) return
+  rafId = requestAnimationFrame(() => {
+    rafId = null
+    if (scrollContainer.value) {
+      scrollTop.value = scrollContainer.value.scrollTop
+    }
+  })
 }
 
-// 日志点击事件
 const onLogClick = (log: LogItemType) => {
   emit('selectLog', log)
 }
 
-// 监听容器大小变化
+// ---- 新日志到达时补偿滚动位置 ----
+
+watch(
+  () => props.logs.length,
+  (newLen) => {
+    const added = newLen - prevLogCount
+    if (added > 0 && prevLogCount > 0 && scrollContainer.value) {
+      // 新日志插入到顶部，把当前滚动位置向下推相应距离
+      nextTick(() => {
+        if (scrollContainer.value) {
+          scrollContainer.value.scrollTop += added * ITEM_HEIGHT
+        }
+      })
+    }
+    prevLogCount = newLen
+  }
+)
+
+// ---- 生命周期 ----
+
 onMounted(() => {
   if (scrollContainer.value) {
     containerHeight.value = scrollContainer.value.clientHeight
+
+    // 监听容器尺寸变化
+    resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        containerHeight.value = entry.contentRect.height
+      }
+    })
+    resizeObserver.observe(scrollContainer.value)
   }
 })
 
-// 监听日志列表变化，保持滚动位置
-watch(
-  () => props.logs.length,
-  () => {
-    // 新日志添加到顶部时，保持当前视图位置
-    // 这里可以根据需要调整滚动行为
-  }
-)
+onUnmounted(() => {
+  if (rafId !== null) cancelAnimationFrame(rafId)
+  resizeObserver?.disconnect()
+})
 </script>
