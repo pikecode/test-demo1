@@ -13,7 +13,7 @@ export const fetchLogsMock = (): Promise<LogItem[]> => {
       const newLogs: LogItem[] = Array.from({ length: count }).map(() => ({
         id: crypto.randomUUID(),
         timestamp: Date.now(),
-        level: levels[Math.floor(Math.random() * 4)],
+        level: levels[Math.floor(Math.random() * 4)]!,
         message: `System node-${Math.floor(Math.random() * 100)} reported: ${Math.random()
           .toString(36)
           .substring(7)} event occurred.`,
